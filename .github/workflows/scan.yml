@@ -19,16 +19,20 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.ACTIONWATCH_TOKEN }}
       MAX_NEW_FINDINGS: "50"
       MAX_REPOSITORIES: "100"
+
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           token: ${{ secrets.ACTIONWATCH_TOKEN }}
-      - uses: actions/setup-node@1e60f620b9541d8a90cc5db15c1b42b5af16c742 # v4.0.4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
           cache: npm
+
       - run: npm ci
       - run: npm run scan
+
       - name: Stop when there are no genuine new findings
         id: changes
         run: |
@@ -37,9 +41,11 @@ jobs:
           else
             echo "found=true" >> "$GITHUB_OUTPUT"
           fi
+
       - name: Validate findings before proposing them
         if: steps.changes.outputs.found == 'true'
         run: npm run check
+
       - name: Create finding branch and pull request
         if: steps.changes.outputs.found == 'true'
         env:
