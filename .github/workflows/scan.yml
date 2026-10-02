@@ -1,0 +1,57 @@
+name: Scan public repositories
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: actionwatch-scan
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.ACTIONWATCH_TOKEN }}
+      MAX_NEW_FINDINGS: "50"
+      MAX_REPOSITORIES: "100"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          token: ${{ secrets.ACTIONWATCH_TOKEN }}
+      - uses: actions/setup-node@1e60f620b9541d8a90cc5db15c1b42b5af16c742 # v4.0.4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run scan
+      - name: Stop when there are no genuine new findings
+        id: changes
+        run: |
+          if git diff --quiet -- findings; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate findings before proposing them
+        if: steps.changes.outputs.found == 'true'
+        run: npm run check
+      - name: Create finding branch and pull request
+        if: steps.changes.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONWATCH_TOKEN }}
+        run: |
+          branch="findings/run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git config user.name "emptyprocess"
+          git config user.email "320864519+emptyprocess@users.noreply.github.com"
+          git switch -c "$branch"
+          git add findings
+          count=$(git diff --cached --name-only -- findings | wc -l | tr -d ' ')
+          git commit -m "findings: add ${count} new workflow findings"
+          git push --set-upstream origin "$branch"
+          url=$(gh pr create --base main --head "$branch" --title "findings: add ${count} new workflow findings" --body "Automated scan found ${count} genuinely new, deduplicated GitHub Actions findings. CI must pass before merge.")
+          gh pr merge "$url" --auto --squash --delete-branch
