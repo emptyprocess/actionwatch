@@ -1,0 +1,32 @@
+{
+  "name": "actionwatch",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Evidence-first scanner for risky GitHub Actions usage in public repositories",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "npm run format:check && npm run lint && npm test && npm run build && npm run validate",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "scan": "tsx src/cli.ts scan",
+    "test": "vitest run",
+    "validate": "tsx src/cli.ts validate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^2.1.8",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1"
+  }
+}
